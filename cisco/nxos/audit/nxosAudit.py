@@ -1,4 +1,4 @@
-import output.writexlsx.write2excel as w2x
+import write.writexlsx.write2excel as w2x
 from pprint import pprint
 
 #region Build Portmap (Ethernet and Logical)

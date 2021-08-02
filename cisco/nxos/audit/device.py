@@ -22,7 +22,7 @@ nxosVlanKeylist = [{'name': {'data': 'vlanshowbr-vlanname', 'hl': 'VLAN Name'}},
                                                         'hl': 'Last Change (s)'}}
                    ]
 
-#Port-map final output
+#Port-map final write
 nxosIntKeylist = [{'interface': {'data': 'interface', 'hl': 'Interface'}},
                   {'name': {'data': 'name', 'hl': 'Description'}},
                   {'vlan': {'data': 'vlan', 'hl': 'Routed/VLAN'}},

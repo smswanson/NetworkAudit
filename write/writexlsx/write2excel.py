@@ -1,5 +1,5 @@
-from output.writexlsx.write_pyxl_nxos import mkXLSX, Headline, write_hl_category, write_obj, write, mkFont, setalignment, write_merge, setfontcolor, setfill, mkPattern
-import output.writexlsx.write_pyxl_nxos as wr
+from write.writexlsx.write_pyxl_nxos import mkXLSX, Headline, write_hl_category, write_obj, write, mkFont, setalignment, write_merge, setfontcolor, setfill, mkPattern
+import write.writexlsx.write_pyxl_nxos as wr
 
 from pprint import pprint
 deviceHeadline = Headline()

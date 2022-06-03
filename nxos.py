@@ -1,8 +1,10 @@
 from datetime import date
-from cisco.nxos.audit.pullConfig import show_collection, getBackup
+from cisco.nxos.audit.pullConfig import show_collection, getBackup, writeNXOSjson, getCollectionJson
 from cisco.nxos.audit import nxosAudit as nx
 from login import login
+from pprint import pprint
 import json
+import os
 # This is a sample Python script.
 
 # Press Shift+F10 to execute it or replace it with your code.
@@ -11,7 +13,7 @@ import json
 
 def print_setup(time='0000'):
     # Use a breakpoint in the code line below to debug your script.
-    version = '0.1'
+    version = '1.1'
     script_name = 'NXOS-Audit'
     #Set "True" if script is in testing mode
     test = True
@@ -20,6 +22,7 @@ def print_setup(time='0000'):
     if test:
         print('\nRunning in Test Mode\n')
     return test
+
 
 def write_output(device, filetype='json'):
     datafile = device.name + '-' + device.serial + '.' + filetype
@@ -30,25 +33,50 @@ def write_output(device, filetype='json'):
     except:
         print(f'Error Writing {datafile}')
 
+def appendDirectory(directory, file):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    filename = os.path.join(directory, file)
+    return filename
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     timestamp = str(date.today())
     test_mode = print_setup(timestamp)
-    ssh_list = login.create_session(test_mode)
+    creds = login.getNxosCredentials(test_mode)
+    file = creds['filename'] + '.xlsx'
+    project = creds['project']
+    directory = project
+    nxos_dir = directory + '/' + 'nxos_json'
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+    filename = os.path.join(directory, file)
+    if not os.path.isdir(nxos_dir):
+        os.mkdir(nxos_dir)
+    #ssh_list = login.create_session(type='nxos', test=test_mode)
     device_list = []
-    for s in ssh_list:
-        ssh = s['session']
-        ip = s['device']
-        device = show_collection(ssh)
-        backup_file = device.name + '-' + device.serial + '-' + timestamp + '.txt'
-        running_cfg = getBackup(ssh, backup_file)
-        print(f'Disconnecting SSH Session to {ip}')
-        ssh.disconnect()
-        device_list.append(device)
-    filename = 'test0001.xlsx'
+    if creds['offline']:
+        device_list = getCollectionJson(project)
+    else:
+        ip_list = creds['ip_list']
+        pprint(ip_list)
+        del creds['ip_list']   # Cleanup Dictionary for login
+        del creds['filename']  # Cleanup Dictionary for login
+        del creds['project']   # Cleanup Dictionary for login
+        del creds['offline']  # Cleanup Dictionary for login
+        for ip in ip_list:
+            session = login.getNxosSession(ip, creds)
+            device = show_collection(session)
+            backup_file = device.name + '-' + device.serial + '-' + timestamp + '.txt'
+            backup_file = appendDirectory(project + '/backups', backup_file)
+            running_cfg = getBackup(session, backup_file)
+            writeNXOSjson(device.data, project + '/nxos_json')
+            print(f'Disconnecting SSH Session to {ip}')
+            session.disconnect()
+            device_list.append(device)
+
     if device_list == []:
         print('No Devices Accessed. Exiting...')
     else:
-        nx.portmap('lab-portmap.xlsx', device_list)
+        nx.portmap(filename, device_list)
 
 

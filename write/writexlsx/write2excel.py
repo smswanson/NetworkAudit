@@ -75,6 +75,14 @@ class Table:
         self.hl = False
         self.hltest = []
 
+    def orderTable(self, priorTable):
+        try:
+            row = priorTable.row + len(priorTable.rowobject)
+            col = 1
+            self.row = row
+        except:
+            print(f'Failed to update Table Rows')
+
     def setkeys(self, keylist):
         self.keys = keylist
 
@@ -110,6 +118,7 @@ class Table:
             setattr(self, 'ws', WS)
         except:
             print('Failed to set Worksheet')
+
 
     def sortrows(self, key):
         pass
@@ -160,7 +169,7 @@ class Table:
 
     def writetable(self):
         print(f'Building Table: {self.headline}')
-
+        self.row = self.ws.max_row + 1
         self.writeheadline()
         self.writeallrows()
 
@@ -233,7 +242,13 @@ def buildtable(devices, headline):
     return newTable
 
 
-def write_sheet(WB, WS, tables):
+def writeTab(tab, deviceList, headline):
+    table = buildtable(deviceList, headline)
+    table.setworksheet(tab)
+    table.writetable()
+    setautofitcol(tab)
+
+def write_sheet(WB, WS, tables): #To be removed?
     # Tables is list of lists. enables parallel tables.
     tab = wr.addSheet(WB, WS)
     for a in tables:
@@ -275,3 +290,4 @@ def setautofitcol(worksheet):
 
         worksheet.column_dimensions[column_letter].width = adjusted_width
         i = i + 1
+

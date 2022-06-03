@@ -30,7 +30,7 @@ nxosIntKeylist = [{'interface': {'data': 'interface', 'hl': 'Interface'}},
                   {'speed': {'data': 'speed', 'hl': 'Speed'}},
                   {'ip': {'data': 'ip', 'hl': 'IP Address'}},
                   {'mtu': {'data': 'mtu', 'hl': 'MTU'}},
-                  {'vrf_name': {'data': 'vrf_name', 'hl': 'VRF'}},
+                  {'vrf': {'data': 'vrf_name', 'hl': 'VRF'}},
                   {'type': {'data': 'type', 'hl': 'Type'}},
                   {'device_id': {'data': 'device_id', 'hl': 'Neighbor Device'}},
                   {'platform_id': {'data': 'platform_id', 'hl': 'Platform'}},
@@ -41,7 +41,9 @@ nxosIPIntKeylist = [{'interface': {'data': 'intf-name', 'hl': 'Interface'}},
                     {'ip': {'data': 'prefix', 'hl': 'IP Address'}},
                     {'mtu': {'data': 'mtu', 'hl': 'MTU'}},
                     {'proto-state': {'data': 'proto-state', 'hl': 'Protocol State'}},
-                    {'admin-state': {'data': 'admin-state', 'hl': 'Admin State'}}]
+                    {'admin-state': {'data': 'admin-state', 'hl': 'Admin State'}},
+                    {'vrf': {'data': 'vrf-name-out', 'hl': 'VRF'}},
+                    ]
 
 nxosVrfIntKeylist = [{'interface': {'data': 'if_name', 'hl': 'Interface'}},
                      {'vrf_name': {'data': 'vrf_name', 'hl': 'VRF'}}]
@@ -245,9 +247,58 @@ class nxosDevice:
 
     def getInterfaces(self):
         #try:
+        test = False
         for a in self.data['show_int_status']['TABLE_interface']['ROW_interface']:
-            int = nxosSubObj(a, nxosIntKeylist)
+            int = nxosInterface(a, nxosIntKeylist)
             # Sort Interfaces Ethernet, Loopback, Vlan, nve, etc.
+            #try:
+            #pprint(self.data['show_ip_int'])
+            if type(self.data['show_ip_int']['TABLE_intf']) is list:
+                for b in self.data['show_ip_int']['TABLE_intf']:
+                    ipInt = nxosInterface(b['ROW_intf'], nxosIPIntKeylist)
+                    #for c in b['ROW_intf']:
+                    if ipInt.interface == int.interface:
+                        setattr(int, 'ip', ipInt.ip)
+                        setattr(int, 'mtu', ipInt.mtu)
+                        setattr(int, 'vrf', ipInt.vrf)
+                        print(f'Creating IP interface data for {self.name}')
+                        continue
+                    elif 'Vlan' in ipInt.interface:
+                        for c in self.vlanInt:
+                            if ipInt.interface == c.interface:
+                                test = True
+                                break
+                            else:
+                                test = False
+                        if not test:
+                            self.vlanInt.append(ipInt)
+
+
+
+            else:
+                for b in self.data['show_ip_int']['TABLE_intf']['ROW_intf']:
+                    ipInt = nxosInterface(b, nxosIPIntKeylist)
+                    if ipInt.interface == int.interface:
+                            setattr(int, 'ip', int.ip)
+                            setattr(int, 'mtu', int.mtu)
+                            setattr(int, 'vrf', int.vrf)
+                            print(f'Creating IP interface data for {self.name}')
+            '''except:
+                print(f'Unable to process IP interface data for {self.name}')'''
+            if 'TABLE_cdp_neighbor_brief_info' in self.data['show_cdp_nei']:
+                for b in self.data['show_cdp_nei']['TABLE_cdp_neighbor_brief_info']['ROW_cdp_neighbor_brief_info']:
+                    cdp = nxosCdp(b, nxosCDPKeylist)
+                    if cdp.interface == int.interface:
+                        int.device_id = cdp.device_id
+                        int.platform_id = cdp.platform_id
+                        int.port_id = cdp.port_id
+            '''if 'TABLE_nbor' in self.data['show_lldp_nei']:
+                for b in self.data['show_lldp_nei']['TABLE_nbor']['ROW_nbor']:
+                    lldp = nxosCdp(b, nxosLLDPKeylist)
+                    if lldp.interface == int.interface:
+                        int.lldp_chassis_id = lldp.chassis_id
+                        int.lldp_port_id = lldp.port_id'''
+
             if 'Eth' in int.interface:
                 self.eth.append(int)
             elif 'port-channel' in int.interface:
@@ -263,13 +314,13 @@ class nxosDevice:
             else:
                 self.miscInt.append(int)
                 print(f'Found undefined Interface {int.interface}')
-        nxosIntObj(self, self.data['show_ip_int']['TABLE_intf'], nxosIPIntKeylist, extendedkey='ROW_intf')
-        nxosIntObj(self, self.data['show_vrf_interface']['TABLE_if']['ROW_if'], nxosVrfIntKeylist)
-        try:
+        #nxosIntObj(self, self.data['show_ip_int']['TABLE_intf'], nxosIPIntKeylist, extendedkey='ROW_intf')
+        #nxosIntObj(self, self.data['show_vrf_interface']['TABLE_if']['ROW_if'], nxosVrfIntKeylist)
+        '''try:
             nxosIntObj(self, self.data['show_cdp_nei']['TABLE_cdp_neighbor_brief_info']['ROW_cdp_neighbor_brief_info'],
                        nxosCDPKeylist)
         except:
-            pass
+            pass'''
 
 
     def getVRF(self):
@@ -342,16 +393,18 @@ class nxosDevice:
 
 def nxosIntObj(obj1, data, keylist, extendedkey = 'none'):
     if type(data) is list:
-        z = data
+        y = data
     else:
-        z = data[extendedkey]
+        y = data[extendedkey]
 
-    for a in data:
+    '''for a in y:
+        pprint(a)
         if extendedkey != 'none':
             z = a[extendedkey]
         else:
-            z = a
-    nxosObj = nxosSubObj(z, keylist)
+            z = a'''
+
+    nxosObj = nxosSubObj(y, keylist)
     tmp_list = vars(nxosObj)
     listkeys = tmp_list.keys()
     if 'Eth' in nxosObj.interface:
@@ -386,6 +439,18 @@ def nxosIntObj(obj1, data, keylist, extendedkey = 'none'):
 
 class nxosSubObj:
     # Cisco Nexus Interface
+    def __init__(self, json_data, keylist):
+        self.keylist = keylist
+        self.data = json_data
+        initAttr(self)
+
+class nxosInterface:
+    def __init__(self, json_data, keylist):
+        self.keylist = keylist
+        self.data = json_data
+        initAttr(self)
+
+class nxosCdp:
     def __init__(self, json_data, keylist):
         self.keylist = keylist
         self.data = json_data
@@ -428,8 +493,10 @@ def nxosBuildDevice(json_data):
     device.getInterfaces()
     device.getVlans()
     device.getVRF()
-    device.getRoute()
-    device.getBGP()
+
+
+    # device.getRoute()
+    # device.getBGP()
     return device
 
 
